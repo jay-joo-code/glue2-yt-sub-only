@@ -46,6 +46,7 @@
 		"meilisearch": "^0.30.0",
 		"pocketbase": "^0.9.1",
 		"showdown": "^2.1.0",
+		"svelte-youtube-embed": "^0.1.8",
 		"universal-cookie": "^4.0.4"
 	}
 }
