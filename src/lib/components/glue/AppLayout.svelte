@@ -62,7 +62,7 @@
 								{/if}
 							</div>
 						</div>
-						<Auth />
+						<!-- <Auth /> -->
 					</div>
 				</div>
 			</div>
@@ -80,7 +80,7 @@
 				</footer>
 
 				<!-- feedback -->
-				<FeedbackModal />
+				<!-- <FeedbackModal /> -->
 			</div>
 		</div>
 
