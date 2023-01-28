@@ -22,12 +22,21 @@
 
 	onMount(async () => {
 		fetchChannels();
+		fetchVidoes();
 	});
 
 	const fetchChannels = async () => {
 		channels = await pb.collection('channels').getFullList(200, {
 			sort: '-created'
 		});
+	};
+
+	const fetchVidoes = async () => {
+		videos = (
+			await pb.collection('videos').getList(1, 20, {
+				sort: '-publishedAt'
+			})
+		)?.items;
 	};
 
 	const addChannel = async () => {
@@ -97,11 +106,6 @@
 	};
 
 	$: (async () => {
-		videos = (
-			await pb.collection('videos').getList(1, 20, {
-				sort: '-publishedAt'
-			})
-		)?.items;
 		await syncVideos(channels);
 	})();
 
