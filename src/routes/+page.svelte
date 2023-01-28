@@ -10,6 +10,7 @@
 	import { differenceInDays, sub } from 'date-fns';
 	import { onMount } from 'svelte';
 	import Youtube from 'svelte-youtube-embed';
+	import axios from 'axios';
 
 	let channels = [];
 	let videos = [];
@@ -46,18 +47,21 @@
 			const url = `https://www.googleapis.com/youtube/v3/search?key=${
 				import.meta.env.VITE_GOOGLE_API_KEY
 			}&channelId=${channelId}&part=snippet,id&order=date&maxResults=4`;
-			const res = await (await fetch(url)).json();
+			const res = (await axios.get(url))?.data;
 
 			const promises = res?.items?.map(async (video) => {
 				const isExisting = videos?.some((existingVideo) => existingVideo?.id === video?.id);
 
 				if (isExisting) return [];
 
-				const newVideo = await pb.collection('videos').create({
-					title: video?.snippet?.title,
-					publishedAt: video?.snippet?.publishedAt,
-					videoId: video?.id?.videoId
-				});
+				const newVideo = await pb.collection('videos').create(
+					{
+						title: video?.snippet?.title,
+						publishedAt: video?.snippet?.publishedAt,
+						videoId: video?.id?.videoId
+					},
+					{ $cancelKey: video?.id?.videoId }
+				);
 
 				return newVideo;
 			});
