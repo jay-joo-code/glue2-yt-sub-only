@@ -197,7 +197,7 @@
 			{#each videos as video (video?.id)}
 				<div class="">
 					<div class="overflow-hidden rounded-xl [&_h3]:hidden">
-						<Youtube id={video?.id} />
+						<Youtube id={video?.videoId} />
 					</div>
 					<div class="prose mt-2 ml-1">
 						<h3 class="mb-1">{video?.title}</h3>
