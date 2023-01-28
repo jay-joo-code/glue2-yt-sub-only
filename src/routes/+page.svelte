@@ -7,6 +7,7 @@
 	import IconAdd from '$lib/icons/glue/IconAdd.svelte';
 	import IconDelete from '$lib/icons/glue/IconDelete.svelte';
 	import dynamicAgo from '$lib/util/glue/dynamicAgo';
+	import { differenceInDays } from 'date-fns';
 	import { onMount } from 'svelte';
 	import Youtube from 'svelte-youtube-embed';
 
@@ -38,46 +39,85 @@
 		newChannelId = '';
 	};
 
-	const fetchChannelVideos = async (channelId) => {
-		const url = `https://www.googleapis.com/youtube/v3/search?key=${
-			import.meta.env.VITE_GOOGLE_API_KEY
-		}&channelId=${channelId}&part=snippet,id&order=date&maxResults=4`;
-		const res = await (await fetch(url)).json();
+	const syncChannelVideos = async (channelId) => {
+		try {
+			const url = `https://www.googleapis.com/youtube/v3/search?key=${
+				import.meta.env.VITE_GOOGLE_API_KEY
+			}&channelId=${channelId}&part=snippet,id&order=date&maxResults=4`;
+			const res = await (await fetch(url)).json();
 
-		const videos = res?.items?.map((video) => {
-			return {
-				...video?.snippet,
-				id: video?.id?.videoId,
-				url: `https://www.youtube.com/watch?v=${video?.id?.videoId}`
-			};
-		});
+			const promises = res?.items?.map(async (video) => {
+				const isExisting = videos?.some((existingVideo) => existingVideo?.id === video?.id);
 
-		return videos;
+				if (isExisting) return [];
+
+				const newVideo = await pb.collection('videos').create({
+					title: video?.snippet?.title,
+					publishedAt: video?.snippet?.publishedAt,
+					videoId: video?.id?.videoId
+				});
+
+				return newVideo;
+			});
+
+			return await Promise.all(promises);
+		} catch (error) {
+			return [];
+		}
 	};
 
-	const fetchVideos = async (targetChannels) => {
+	const syncVideos = async (targetChannels) => {
 		const promises = targetChannels?.map(async (channel) => {
-			return fetchChannelVideos(channel?.channelId);
+			const daysSinceFetch = differenceInDays(new Date(), new Date(channel?.lastFetchedDate));
+
+			if (channel?.isEnabled && daysSinceFetch >= 1) {
+				return syncChannelVideos(channel?.channelId);
+			}
+
+			return [];
 		});
 		const res = await Promise.all(promises);
 
 		if (!res) return [];
 
-		return res
+		const newVideos = res
 			?.flat()
+			?.filter((video) => video)
 			?.map((video) => ({ ...video, publishedAt: new Date(video?.publishedAt) }))
 			?.sort((a, b) => {
 				return b?.publishedAt?.getTime() - a?.publishedAt?.getTime();
 			});
+		videos = [...newVideos, ...videos];
 	};
 
-	$: (async () => (videos = await fetchVideos(channels)))();
+	$: (async () => {
+		videos = (
+			await pb.collection('videos').getList(1, 20, {
+				sort: '-publishedAt'
+			})
+		)?.items;
+		await syncVideos(channels);
+	})();
 
 	const handleDeleteChannel = async () => {
 		if (deleteChannelId) {
 			pb.collection('channels').delete(deleteChannelId);
 			channels = channels?.filter((channel) => channel?.id !== deleteChannelId);
 		}
+	};
+
+	const handleSetEnabled = async (channelId, value) => {
+		pb.collection('channels').update(channelId, {
+			isEnabled: value
+		});
+		channels = channels?.map((channel) => {
+			if (channel?.id === channelId)
+				return {
+					...channel,
+					isEnabled: value
+				};
+			return channel;
+		});
 	};
 </script>
 
@@ -96,7 +136,15 @@
 				{#each channels as channel (channel?.id)}
 					<div class="prose rounded-xl bg-base-200 py-3 px-4">
 						<div class="mb-1 flex items-center justify-between">
-							<h4 class="m-0">{channel?.name}</h4>
+							<div class="flex items-center space-x-2">
+								<h4 class="m-0">{channel?.name}</h4>
+								<input
+									type="checkbox"
+									class="toggle-success toggle toggle-xs"
+									checked={channel?.isEnabled}
+									on:input={() => handleSetEnabled(channel?.id, !channel?.isEnabled)}
+								/>
+							</div>
 							<label
 								for="modal-delete-channel"
 								class="button btn-xs btn text-lg"
