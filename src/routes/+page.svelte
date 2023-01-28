@@ -51,15 +51,21 @@
 		newChannelId = '';
 	};
 
-	const syncChannelVideos = async (channelId) => {
+	const syncChannelVideos = async (channel) => {
 		try {
 			const url = `https://www.googleapis.com/youtube/v3/search?key=${
 				import.meta.env.VITE_GOOGLE_API_KEY
-			}&channelId=${channelId}&part=snippet,id&order=date&maxResults=4`;
+			}&channelId=${channel?.channelId}&part=snippet,id&order=date&maxResults=4`;
 			const res = (await axios.get(url))?.data;
 
+			pb.collection('channels').update(channel?.id, {
+				lastFetchedDate: new Date()
+			});
+
 			const promises = res?.items?.map(async (video) => {
-				const isExisting = videos?.some((existingVideo) => existingVideo?.id === video?.id);
+				const isExisting = videos?.some(
+					(existingVideo) => existingVideo?.videoId === video?.videoId
+				);
 
 				if (isExisting) return [];
 
@@ -86,7 +92,7 @@
 			const daysSinceFetch = differenceInDays(new Date(), new Date(channel?.lastFetchedDate));
 
 			if (channel?.isEnabled && daysSinceFetch >= 1) {
-				return syncChannelVideos(channel?.channelId);
+				return syncChannelVideos(channel);
 			}
 
 			return [];
