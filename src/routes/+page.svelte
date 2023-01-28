@@ -7,7 +7,7 @@
 	import IconAdd from '$lib/icons/glue/IconAdd.svelte';
 	import IconDelete from '$lib/icons/glue/IconDelete.svelte';
 	import dynamicAgo from '$lib/util/glue/dynamicAgo';
-	import { differenceInDays } from 'date-fns';
+	import { differenceInDays, sub } from 'date-fns';
 	import { onMount } from 'svelte';
 	import Youtube from 'svelte-youtube-embed';
 
@@ -32,7 +32,9 @@
 	const addChannel = async () => {
 		const newChannel = await pb.collection('channels').create({
 			name: newChannelName,
-			channelId: newChannelId
+			channelId: newChannelId,
+			isEnabled: true,
+			lastFetchedDate: sub(new Date(), { days: 3 })
 		});
 		channels = [newChannel, ...channels];
 		newChannelName = '';
@@ -162,6 +164,27 @@
 		</div>
 	</Aside>
 	<Main>
+		{#if videos?.length === 0}
+			<div class="flex justify-center">
+				<div class="alert alert-error shadow-lg">
+					<div>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-6 w-6 flex-shrink-0 stroke-current"
+							fill="none"
+							viewBox="0 0 24 24"
+							><path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+							/></svg
+						>
+						<span>Youtube API quota exceeded</span>
+					</div>
+				</div>
+			</div>
+		{/if}
 		<div class="space-y-8 p-2">
 			{#each videos as video (video?.id)}
 				<div class="">
