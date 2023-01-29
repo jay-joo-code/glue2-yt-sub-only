@@ -8,7 +8,7 @@
 	import IconDelete from '$lib/icons/glue/IconDelete.svelte';
 	import dynamicAgo from '$lib/util/glue/dynamicAgo';
 	import axios from 'axios';
-	import { differenceInMinutes, sub } from 'date-fns';
+	import { differenceInHours, differenceInMinutes, sub } from 'date-fns';
 	import { onMount } from 'svelte';
 	import Youtube from 'svelte-youtube-embed';
 
@@ -96,9 +96,9 @@
 
 	const syncVideos = async (targetChannels) => {
 		const promises = targetChannels?.map(async (channel) => {
-			const minsSinceFetch = differenceInMinutes(new Date(), new Date(channel?.lastFetchedDate));
+			const hoursSinceFetch = differenceInHours(new Date(), new Date(channel?.lastFetchedDate));
 
-			if (channel?.isEnabled && minsSinceFetch >= 30) {
+			if (channel?.isEnabled && hoursSinceFetch >= 8) {
 				return syncChannelVideos(channel);
 			}
 
