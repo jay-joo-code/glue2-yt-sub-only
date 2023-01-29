@@ -7,10 +7,10 @@
 	import IconAdd from '$lib/icons/glue/IconAdd.svelte';
 	import IconDelete from '$lib/icons/glue/IconDelete.svelte';
 	import dynamicAgo from '$lib/util/glue/dynamicAgo';
-	import { differenceInDays, sub } from 'date-fns';
+	import axios from 'axios';
+	import { differenceInMinutes, sub } from 'date-fns';
 	import { onMount } from 'svelte';
 	import Youtube from 'svelte-youtube-embed';
-	import axios from 'axios';
 
 	let channels = [];
 	let videos = [];
@@ -19,6 +19,8 @@
 	let newChannelId = '';
 
 	let deleteChannelId = '';
+
+	let isSyncing = false;
 
 	onMount(async () => {
 		fetchChannels();
@@ -63,11 +65,15 @@
 			});
 
 			const promises = res?.items?.map(async (video) => {
-				const isExisting = videos?.some(
-					(existingVideo) => existingVideo?.videoId === video?.videoId
-				);
+				const isExisting =
+					(
+						await pb.collection('videos').getList(1, 20, {
+							filter: `videoId='${video?.id?.videoId}'`,
+							$cancelKey: video?.id?.videoId
+						})
+					)?.totalItems > 0;
 
-				if (isExisting) return [];
+				if (isExisting) return null;
 
 				const newVideo = await pb.collection('videos').create(
 					{
@@ -81,7 +87,8 @@
 				return newVideo;
 			});
 
-			return await Promise.all(promises);
+			const newVideos = await Promise.all(promises);
+			return newVideos;
 		} catch (error) {
 			return [];
 		}
@@ -89,9 +96,9 @@
 
 	const syncVideos = async (targetChannels) => {
 		const promises = targetChannels?.map(async (channel) => {
-			const daysSinceFetch = differenceInDays(new Date(), new Date(channel?.lastFetchedDate));
+			const minsSinceFetch = differenceInMinutes(new Date(), new Date(channel?.lastFetchedDate));
 
-			if (channel?.isEnabled && daysSinceFetch >= 1) {
+			if (channel?.isEnabled && minsSinceFetch >= 30) {
 				return syncChannelVideos(channel);
 			}
 
@@ -112,7 +119,9 @@
 	};
 
 	$: (async () => {
+		isSyncing = true;
 		await syncVideos(channels);
+		isSyncing = false;
 	})();
 
 	const handleDeleteChannel = async () => {
@@ -171,13 +180,20 @@
 								<IconDelete />
 							</label>
 						</div>
-						<p class="text-xs">{channel?.channelId}</p>
+						<p class="text-xs">
+							Synced {dynamicAgo({ date: new Date(channel?.lastFetchedDate) })}
+						</p>
 					</div>
 				{/each}
 			</div>
 		</div>
 	</Aside>
 	<Main>
+		<div class="h-8">
+			{#if isSyncing}
+				<p>syncing ...</p>
+			{/if}
+		</div>
 		{#if videos?.length === 0}
 			<div class="flex justify-center">
 				<div class="alert alert-error shadow-lg">
