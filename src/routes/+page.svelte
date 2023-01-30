@@ -97,8 +97,9 @@
 	const syncVideos = async (targetChannels) => {
 		const promises = targetChannels?.map(async (channel) => {
 			const hoursSinceFetch = differenceInHours(new Date(), new Date(channel?.lastFetchedDate));
+			console.log(channel?.name, hoursSinceFetch);
 
-			if (channel?.isEnabled && hoursSinceFetch >= 3) {
+			if (channel?.isEnabled && hoursSinceFetch >= 2) {
 				return syncChannelVideos(channel);
 			}
 
